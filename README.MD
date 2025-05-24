@@ -16,6 +16,9 @@ A Chrome extension that analyzes email content and URLs for phishing indicators.
 
 - **Privacy Protection with Proxy Support**: All scraping tasks are performed through a proxy server to preserve user privacy and avoid direct exposure to potentially harmful links.
 
+- **Screenshot of the Phish Website **: A base64 encoded screenshot is returned to the user, so in this process the user doesn't have to visit the webpage but still get to view the website. And any malicious scripts cannot access the user's machine since it runs on a isolated Docker environment.
+
+
 ## Project Structure
 
 ```
