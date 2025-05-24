@@ -187,43 +187,6 @@ The backend includes basic phishing detection rules:
 - **Whitelist/Blacklist**: User-defined trusted/blocked domains
 - **Real-time Notifications**: Push notifications for high-risk detections
 
-### Security Considerations
-
-- **No Local Storage**: Uses Chrome storage APIs instead of localStorage
-- **CORS Enabled**: Backend configured for extension requests
-- **Input Validation**: Backend validates all incoming data
-- **Error Sanitization**: Prevents information leakage in error messages
-
-## Troubleshooting
-
-### Extension Not Working
-1. Check if extension is enabled in `chrome://extensions/`
-2. Verify you're on a supported email platform
-3. Check browser console for error messages
-4. Reload the extension if needed
-
-### Backend Connection Issues
-1. Ensure Flask backend is running on `localhost:5000`
-2. Check firewall settings
-3. Verify CORS is enabled
-4. Check backend logs for errors
-
-### Email Content Not Extracted
-1. Verify you're on Gmail or Outlook
-2. Wait for page to fully load
-3. Check if emails are visible on screen
-4. Review browser console for content script errors
-
-## Contributing
-
-This extension is designed to be minimal but scalable. When adding features:
-
-1. **Follow the established patterns** in existing code
-2. **Add comprehensive comments** for new functionality  
-3. **Test on both Gmail and Outlook**
-4. **Update this README** with new features
-5. **Consider security implications** of changes
-
 ## License
 
 This project is for educational and research purposes. Ensure compliance with email platform terms of service when using.
