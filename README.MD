@@ -4,12 +4,17 @@ A Chrome extension that analyzes email content and URLs for phishing indicators.
 
 ## Features
 
-- **Email Content Extraction**: Automatically extracts email subject, sender, content, and embedded URLs
-- **URL Analysis**: Analyzes URLs when users hover over or right-click on links
-- **Real-time Processing**: Sends data to backend Flask server for analysis
-- **Multi-platform Support**: Works with Gmail and Outlook
-- **Statistics Tracking**: Tracks analyzed emails, URLs, and detected threats
-- **User-friendly Popup**: Clean interface showing extension status and statistics
+- **Email Content Extraction**: Automatically extracts email subject, sender, content, and embedded URLs.
+
+- **URL Analysis**: Analyzes URLs when users hover over or right-click on links to detect suspicious behavior.
+
+- **Real-time Processing**: Sends data to a Flask-based backend server for instant phishing analysis.
+
+- **Dockerized Sandbox Environment**: Runs backend services in an isolated Docker container to ensure secure and reproducible operations.
+
+- **Advanced Web Scraping with Playwright**: Utilizes Playwright inside the Docker sandbox to scrape and analyze webpage content and behavior for more accurate threat detection.
+
+- **Privacy Protection with Proxy Support**: All scraping tasks are performed through a proxy server to preserve user privacy and avoid direct exposure to potentially harmful links.
 
 ## Project Structure
 
