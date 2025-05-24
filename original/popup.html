@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 16px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      background-color: #f5f5f5;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      margin: 0;
+      color: #2c3e50;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .header p {
+      margin: 5px 0 0 0;
+      color: #7f8c8d;
+      font-size: 12px;
+    }
+    
+    .stats-container {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .stat-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .stat-label {
+      color: #34495e;
+      font-size: 14px;
+    }
+    
+    .stat-value {
+      color: #2980b9;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .status-container {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    
+    .status-active {
+      background-color: #27ae60;
+    }
+    
+    .status-inactive {
+      background-color: #e74c3c;
+    }
+    
+    .status-text {
+      font-size: 14px;
+      color: #2c3e50;
+    }
+    
+    .controls-container {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .control-button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    
+    .control-button:last-child {
+      margin-bottom: 0;
+    }
+    
+    .button-primary {
+      background-color: #3498db;
+      color: white;
+    }
+    
+    .button-primary:hover {
+      background-color: #2980b9;
+    }
+    
+    .button-secondary {
+      background-color: #ecf0f1;
+      color: #2c3e50;
+    }
+    
+    .button-secondary:hover {
+      background-color: #d5dbdb;
+    }
+    
+    .last-scan {
+      text-align: center;
+      color: #7f8c8d;
+      font-size: 11px;
+      margin-top: 12px;
+    }
+    
+    /* Icon placeholders - commented out for now */
+    /*
+    .icon-shield::before {
+      content: "🛡️";
+      margin-right: 6px;
+    }
+    
+    .icon-scan::before {
+      content: "🔍";
+      margin-right: 6px;
+    }
+    
+    .icon-settings::before {
+      content: "⚙️";
+      margin-right: 6px;
+    }
+    */
+  </style>
+</head>
+<body>
+  <div class="header">
+    <!-- <div class="icon-shield"></div> Icon placeholder -->
+    <h1>Phishing Detector</h1>
+    <p>Email Security Extension</p>
+  </div>
+  
+  <div class="stats-container">
+    <div class="stat-item">
+      <span class="stat-label">Emails Scanned</span>
+      <span class="stat-value" id="emails-scanned">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">URLs Analyzed</span>
+      <span class="stat-value" id="urls-analyzed">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Threats Detected</span>
+      <span class="stat-value" id="threats-detected">0</span>
+    </div>
+  </div>
+  
+  <div class="status-container">
+    <div class="status-indicator">
+      <div class="status-dot status-active" id="status-dot"></div>
+      <span class="status-text" id="status-text">Protection Active</span>
+    </div>
+    <div class="last-scan" id="last-scan">Last scan: Never</div>
+  </div>
+  
+  <div class="controls-container">
+    <button class="control-button button-primary" id="scan-now">
+      <!-- <span class="icon-scan"></span> Icon placeholder -->
+      Scan Current Page
+    </button>
+    <button class="control-button button-secondary" id="view-settings">
+      <!-- <span class="icon-settings"></span> Icon placeholder -->
+      Settings
+    </button>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

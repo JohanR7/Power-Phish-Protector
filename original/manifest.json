@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Phishing Detection Extension",
+  "version": "1.0",
+  "description": "Detects phishing attempts in emails and links",
+  
+  "permissions": [
+    "storage",
+    "tabs",
+    "contextMenus",
+    "webNavigation",  
+    "activeTab"
+  ],
+  
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://outlook.live.com/*",
+    "https://outlook.office.com/*",
+    "http://localhost:5123/*",
+    "*://*/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "https://outlook.live.com/*",
+        "https://outlook.office.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Phishing Detection"
+  },
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

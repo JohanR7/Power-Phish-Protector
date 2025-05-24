@@ -1,0 +1,14 @@
+# requirements.txt
+playwright
+Flask
+gunicorn
+# For URL parsing and analysis
+tldextract # To get domain, subdomain, suffix
+# For SSL certificate info (can be complex, might start with simpler Playwright info)
+# cryptography # If you want to parse certs deeply; Playwright offers some basic info
+# python-whois # For domain age (requires network access, might be slow/blocked)
+# For entropy calculation
+scipy # For entropy, or implement a simpler version
+# Requests can be useful for out-of-band checks if needed (e.g. checking SSL without Playwright)
+requests
+beautifulsoup4 # For easier HTML parsing if needed, though Playwright locators are powerful
