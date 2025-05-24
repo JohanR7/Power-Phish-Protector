@@ -103,11 +103,6 @@ Power-Phish-Protector/
    - The extension automatically analyzes the URL
    - Results are sent to backend and logged
 
-2. **Context Menu Analysis**
-   - Right-click on any link
-   - Select "Analyze Link for Phishing"
-   - URL is analyzed and results displayed
-
 ### Popup Interface
 
 - Click the extension icon to view:
@@ -116,55 +111,6 @@ Power-Phish-Protector/
   - Number of threats detected
   - Backend connection status
   - Manual scan trigger
-
-## Backend API Endpoints
-
-### Health Check
-```
-GET /health
-```
-Returns backend status and timestamp.
-
-### Email Analysis
-```
-POST /analyze-email
-Content-Type: application/json
-
-{
-  "subject": "Email subject",
-  "sender": "sender@example.com",
-  "content": "Email content text",
-  "urls": [
-    {
-      "url": "https://example.com",
-      "text": "Link text",
-      "title": "Link title"
-    }
-  ],
-  "platform": "gmail"
-}
-```
-
-### URL Analysis
-```
-POST /analyze-url
-Content-Type: application/json
-
-{
-  "url": "https://suspicious-site.com",
-  "timestamp": "2025-05-22T10:30:00Z"
-}
-```
-
-### Statistics
-```
-GET /stats
-```
-Returns analysis statistics.
-
-## Current Analysis Logic
-
-The backend includes basic phishing detection rules:
 
 ### Email Analysis
 - **Suspicious keywords** in subject lines (urgent, verify, etc.)
@@ -179,6 +125,13 @@ The backend includes basic phishing detection rules:
 - **IP addresses** instead of domain names
 - **Excessive subdomains**
 - **URL length** analysis
+
+### 🐳 Docker Sandbox Environment
+- **Isolated Execution**: All backend operations, including web scraping and phishing detection, are run inside a secure Docker container.
+- **Safe Web Interaction**: Malicious webpages are loaded inside the container, preventing any direct contact with the user’s system.
+- **Reproducible Setup**: Docker ensures consistent behavior across different machines and environments.
+- **Easy Deployment**: The entire backend stack can be spun up quickly using `docker-compose` or a single Dockerfile.
+- **Secure Script Execution**: Suspicious scripts embedded in web pages are neutralized, as they execute in an environment without access to the user’s OS or browser.
 
 ## Development Notes
 
