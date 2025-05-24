@@ -22,7 +22,7 @@ A Chrome extension that analyzes email content and URLs for phishing indicators.
 Power-Phish-Protector/
 ├── Backend/                  # Flask backend application
 │   └── app.py
-│
+│   └── requirements.txt
 ├── ChromeExtension/          # Chrome extension frontend
 │   ├── background.js
 │   ├── content.js
@@ -46,6 +46,7 @@ Power-Phish-Protector/
 
 1. **Install Python Dependencies**
    ```bash
+   cd Backend
    pip install -r requirements.txt
    ```
 
@@ -78,7 +79,6 @@ Power-Phish-Protector/
 1. **Navigate to Gmail or Outlook**
    - The extension automatically detects supported email platforms
    - Gmail: `mail.google.com`
-   - Outlook: `outlook.live.com` or `outlook.office.com`
 
 2. **Email Scanning**
    - The extension automatically scans visible emails
