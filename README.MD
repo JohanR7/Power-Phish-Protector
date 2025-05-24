@@ -16,7 +16,7 @@ A Chrome extension that analyzes email content and URLs for phishing indicators.
 
 - **Privacy Protection with Proxy Support**: All scraping tasks are performed through a proxy server to preserve user privacy and avoid direct exposure to potentially harmful links.
 
-- **Screenshot of the Phish Website**: A base64 encoded screenshot is returned to the user, so in this process the user doesn't have to visit the webpage but still get to view the website. And any malicious scripts cannot access the user's machine since it runs on a isolated Docker environment.
+- **Phish Website Screenshot (Base64 Encoded)**: Returns a base64 encoded screenshot of the suspicious website, allowing users to view the site without actually visiting it—mitigating any risk of executing malicious scripts locally.
 
 
 ## Project Structure
@@ -74,6 +74,14 @@ Power-Phish-Protector/
 3. **Verify Installation**
    - Look for the extension icon in Chrome's toolbar
    - Click the icon to open the popup interface
+
+### Docker Setup
+   ```bash
+   - cd Docker
+   - docker build -t your_app_name .
+   - docker run -d -p 5000:5000 --name your_app_name_container your_app_name
+
+   ```
 
 ## Usage
 
