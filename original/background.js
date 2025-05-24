@@ -44,7 +44,7 @@ async function analyzeUrl(url, tabId) {
   try {
     console.log('Analyzing URL:', url);
     
-    const response = await fetch('http://localhost:5123/analyze-url', {
+    const response = await fetch('http://localhost:5102/analyze-url', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ async function analyzeEmailContent(emailData, tabId) {
   try {
     console.log('Analyzing email content:', emailData);
     
-    const response = await fetch('http://localhost:5123/analyze-email', {
+    const response = await fetch('http://localhost:5102/analyze-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ async function analyzeEmailContent(emailData, tabId) {
 }
 async function getBackendStats() {
   try {
-    const response = await fetch('http://localhost:5123/stats', {
+    const response = await fetch('http://localhost:5102/stats', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

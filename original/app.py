@@ -14,7 +14,7 @@ from transformers import pipeline
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
-import json
+# import json # already imported
 import urllib.parse
 import re
 import torch # Explicitly import torch
@@ -75,28 +75,26 @@ try:
         device=-1,  # -1 for CPU, 0 for GPU 0
         framework="pt"
     )
-    # You might need to check model.config.id2label to confirm label mapping if issues arise
-    # print(f"Email content model labels: {email_content_pipeline.model.config.id2label}")
     print("Email content classification model loaded successfully!")
 except Exception as e:
     print(f"Error loading Email content classification model: {e}")
 
-# Global counters for tracking
 analysis_stats = {
     'emails_analyzed': 0,
     'urls_analyzed': 0,
     'threats_detected': 0,
     'false_positives_prevented': 0,
     'email_model_predictions': {'phishing': 0, 'safe': 0, 'error': 0},
-    'url_model_predictions': {'phishing': 0, 'safe': 0, 'error': 0}
+    'url_model_predictions': {'phishing': 0, 'safe': 0, 'error': 0},
+    'playwright_scans_performed': 0,
+    'playwright_scan_errors': 0
 }
 
 def is_trusted_domain(url_or_email):
-    """Check if URL or email is from a trusted domain"""
     try:
-        if '@' in url_or_email: # Handle email addresses
+        if '@' in url_or_email:
             domain = url_or_email.split('@')[1].lower()
-        else: # Handle URLs
+        else:
             parsed_url = url_or_email if url_or_email.startswith(('http://', 'https://')) else f'http://{url_or_email}'
             domain = urllib.parse.urlparse(parsed_url).netloc.lower()
         
@@ -111,7 +109,6 @@ def is_trusted_domain(url_or_email):
         return False, None
 
 def is_trusted_email_pattern(email):
-    """Check if email matches trusted patterns"""
     if not email: return False
     email_lower = email.lower()
     for pattern in TRUSTED_EMAIL_PATTERNS:
@@ -129,7 +126,7 @@ def health_check():
     })
 
 @app.route('/analyze-email', methods=['POST'])
-def analyze_email_route(): # Renamed to avoid conflict with function name
+def analyze_email_route():
     try:
         email_data = request.get_json()
         if not email_data:
@@ -151,7 +148,7 @@ def analyze_email_route(): # Renamed to avoid conflict with function name
         return jsonify({'error': 'Internal server error', 'status': 'error'}), 500
 
 @app.route('/analyze-url', methods=['POST'])
-def analyze_url_route(): # Renamed
+def analyze_url_route():
     try:
         url_data = request.get_json()
         if not url_data or not url_data.get('url'):
@@ -161,14 +158,23 @@ def analyze_url_route(): # Renamed
         print(f"\n{'='*20} URL ANALYSIS REQUEST {'='*20}")
         print(f"Timestamp: {datetime.now().isoformat()}\nURL: {url_to_analyze}")
         
-        analysis_result = perform_url_analysis(url_to_analyze)
-        fetch_playwright_scan_details(url_to_analyze)
+        analysis_result = perform_url_analysis(url_to_analyze) # ML analysis
         
-        analysis_stats['urls_analyzed'] += 1
+        # Always fetch playwright scan details for direct URL analysis, unless ML already said it's whitelisted
+        playwright_scan_data = None
+        if not analysis_result.get('is_trusted_domain'):
+            playwright_scan_data = fetch_playwright_scan_details(url_to_analyze)
+            analysis_stats['playwright_scans_performed'] += 1
+            if playwright_scan_data.get("error"):
+                 analysis_stats['playwright_scan_errors'] += 1
+        
+        analysis_result['playwright_scan_details'] = playwright_scan_data # Add playwright results
+        
+        analysis_stats['urls_analyzed'] += 1 # This counts ML analysis primarily
         if analysis_result.get('risk_level') in ['high', 'critical']:
             analysis_stats['threats_detected'] += 1
             
-        print("ANALYSIS RESULT:")
+        print("ANALYSIS RESULT (including Playwright if applicable):")
         print(json.dumps(analysis_result, indent=2))
         print(f"{'='*50}\n")
         return jsonify(analysis_result)
@@ -196,8 +202,8 @@ def print_analysis_result_summary(result):
 
 def perform_email_analysis(email_data):
     subject = email_data.get('subject', '')
-    sender_email_address = email_data.get('sender', '') # Keep original case for display, use .lower() for checks
-    content = email_data.get('content', '') # Keep original case for model, .lower() for keywords
+    sender_email_address = email_data.get('sender', '')
+    content = email_data.get('content', '')
     urls_in_email = email_data.get('urls', [])
 
     risk_score = 0
@@ -206,7 +212,6 @@ def perform_email_analysis(email_data):
     ml_email_content_details = {}
     analyzed_url_details = []
 
-    # 1. Sender Trust
     is_trusted_sender, trusted_sender_domain = False, None
     if sender_email_address:
         is_trusted_sender, trusted_sender_domain = is_trusted_domain(sender_email_address)
@@ -214,7 +219,7 @@ def perform_email_analysis(email_data):
             is_trusted_sender = is_trusted_email_pattern(sender_email_address)
     
     if is_trusted_sender:
-        risk_score -= 50  # Significant reduction for trusted sender
+        risk_score -= 50
         trust_factors.append(f"Sender ({sender_email_address}) is trusted (domain/pattern: {trusted_sender_domain or 'matched pattern'})")
         print(f"TRUSTED SENDER: {sender_email_address}")
     else:
@@ -223,8 +228,6 @@ def perform_email_analysis(email_data):
         else:
              risk_factors.append("Sender email address not provided or empty.")
 
-
-    # 2. Email Content ML Analysis (using ElSlay/BERT-Phishing-Email-Model)
     if email_content_pipeline and (subject or content):
         text_for_email_model = f"Subject: {subject}\n\nBody:\n{content}"
         try:
@@ -233,9 +236,6 @@ def perform_email_analysis(email_data):
             pred_label = prediction['label']
             pred_score = prediction['score']
             ml_email_content_details = {'model_prediction': pred_label, 'confidence': pred_score}
-
-            # Labels for ElSlay/BERT-Phishing-Email-Model are typically 'Phishing Email' or 'Safe Email'
-            # Or LABEL_0 for Safe, LABEL_1 for Phishing. The pipeline usually maps these.
             is_phishing_email_pred = 'phishing' in pred_label.lower() or pred_label == 'LABEL_1'
 
             if is_phishing_email_pred:
@@ -245,18 +245,17 @@ def perform_email_analysis(email_data):
                 elif pred_score > 0.7: email_ml_risk_contribution = 25
                 elif pred_score > 0.5: email_ml_risk_contribution = 15
                 
-                if not is_trusted_sender: # Only add full score if sender isn't trusted
+                if not is_trusted_sender:
                     risk_score += email_ml_risk_contribution
-                else: # Reduced impact if sender is trusted
+                else:
                     risk_score += email_ml_risk_contribution * 0.25
                     risk_factors.append(f"Email Content ML: Predicted '{pred_label}' ({pred_score:.2f}) - reduced impact due to trusted sender")
                 if email_ml_risk_contribution > 0 and not is_trusted_sender:
                      risk_factors.append(f"Email Content ML: Predicted '{pred_label}' with confidence {pred_score:.2f}")
-
-            else: # Predicted Safe
+            else:
                 analysis_stats['email_model_predictions']['safe'] += 1
-                if pred_score > 0.8: # High confidence safe
-                    risk_score -= 15 # Further reduce risk
+                if pred_score > 0.8:
+                    risk_score -= 15
                     trust_factors.append(f"Email Content ML: Predicted '{pred_label}' with high confidence {pred_score:.2f}")
         except Exception as e:
             print(f"Error during Email Content ML analysis: {e}")
@@ -266,11 +265,9 @@ def perform_email_analysis(email_data):
     elif not email_content_pipeline:
         risk_factors.append("Email content ML model not loaded.")
 
-    # 3. Heuristic Keyword Checks (Subject & Content)
-    # Apply reduced weight if sender is trusted or if ML already flagged as high-risk phishing
     heuristic_weight_multiplier = 0.25 if is_trusted_sender else 1.0
     if ml_email_content_details.get('model_prediction', '').lower() == 'phishing email' and ml_email_content_details.get('confidence', 0) > 0.8:
-        heuristic_weight_multiplier *= 0.5 # Reduce heuristic impact if ML is confident
+        heuristic_weight_multiplier *= 0.5
 
     suspicious_subject_keywords = ['urgent', 'immediate', 'verify', 'suspend', 'expire', 'warning', 'action required', 'limited time', 'prize']
     for keyword in suspicious_subject_keywords:
@@ -284,7 +281,6 @@ def perform_email_analysis(email_data):
             risk_score += int(8 * heuristic_weight_multiplier)
             risk_factors.append(f"Urgency indicator in content: '{keyword}' (weight: {heuristic_weight_multiplier:.2f})")
 
-    # 4. URL Analysis (Trusted Domains, Shorteners, and ML for untrusted)
     trusted_url_count = 0
     if urls_in_email:
         for url_info in urls_in_email:
@@ -292,59 +288,80 @@ def perform_email_analysis(email_data):
             if not url_text: continue
 
             is_url_trusted, url_trusted_domain = is_trusted_domain(url_text)
+            playwright_scan_for_this_url = None # Initialize
+
             if is_url_trusted:
                 trusted_url_count += 1
                 trust_factors.append(f"URL links to trusted domain: {url_trusted_domain} ({url_text[:70]}...)")
-                analyzed_url_details.append({'url': url_text, 'status': 'trusted', 'trusted_domain': url_trusted_domain})
+                analyzed_url_details.append({
+                    'url': url_text, 
+                    'status': 'trusted', 
+                    'trusted_domain': url_trusted_domain,
+                    'playwright_scan': None # No scan for trusted
+                })
             else:
-                # Check for common URL shorteners (heuristic)
                 shortener_found = False
-                suspicious_shorteners = ['bit.ly', 'tinyurl', 'short.link', 'tiny.cc', 'is.gd', 'soo.gd', 't.co'] # t.co is Twitter but often abused
+                suspicious_shorteners = ['bit.ly', 'tinyurl', 'short.link', 'tiny.cc', 'is.gd', 'soo.gd', 't.co']
                 for pattern in suspicious_shorteners:
                     if pattern in url_text.lower():
-                        risk_score += int(15 * heuristic_weight_multiplier) # Higher penalty for shorteners if not from trusted sender
+                        risk_score += int(15 * heuristic_weight_multiplier)
                         risk_factors.append(f"Suspicious URL shortener: {pattern} in {url_text[:70]}... (weight: {heuristic_weight_multiplier:.2f})")
                         shortener_found = True
-                        analyzed_url_details.append({'url': url_text, 'status': 'shortener', 'pattern': pattern})
+                        # Scan shorteners with Playwright as they hide the final destination
+                        playwright_scan_for_this_url = fetch_playwright_scan_details(url_text)
+                        analysis_stats['playwright_scans_performed'] += 1
+                        if playwright_scan_for_this_url.get("error"):
+                             analysis_stats['playwright_scan_errors'] += 1
+
+                        analyzed_url_details.append({
+                            'url': url_text, 
+                            'status': 'shortener', 
+                            'pattern': pattern,
+                            'playwright_scan': playwright_scan_for_this_url
+                        })
                         break
                 
                 if not shortener_found:
-                    # Analyze with URL ML model
-                    url_analysis_result = perform_url_analysis(url_text)
+                    url_ml_analysis_result = perform_url_analysis(url_text) # ML analysis
+                    
+                    # Perform Playwright scan for non-trusted, non-shortener URLs
+                    playwright_scan_for_this_url = fetch_playwright_scan_details(url_text)
+                    analysis_stats['playwright_scans_performed'] += 1
+                    if playwright_scan_for_this_url.get("error"):
+                         analysis_stats['playwright_scan_errors'] += 1
+
                     analyzed_url_details.append({
                         'url': url_text,
                         'status': 'ml_analyzed',
-                        'ml_risk_level': url_analysis_result.get('risk_level'),
-                        'ml_score': url_analysis_result.get('risk_score'),
-                        'ml_label': url_analysis_result.get('model_label')
+                        'ml_risk_level': url_ml_analysis_result.get('risk_level'),
+                        'ml_score': url_ml_analysis_result.get('risk_score'),
+                        'ml_label': url_ml_analysis_result.get('model_label'),
+                        'playwright_scan': playwright_scan_for_this_url # Add playwright results here
                     })
 
-                    if url_analysis_result.get('risk_level') == 'critical':
-                        risk_score += 35 if not is_trusted_sender else 10 # High impact for critical URL
-                        risk_factors.append(f"URL ML: Critical risk URL detected: {url_text[:70]}... (Score: {url_analysis_result.get('risk_score')})")
-                    elif url_analysis_result.get('risk_level') == 'high':
+                    if url_ml_analysis_result.get('risk_level') == 'critical':
+                        risk_score += 35 if not is_trusted_sender else 10
+                        risk_factors.append(f"URL ML: Critical risk URL detected: {url_text[:70]}... (Score: {url_ml_analysis_result.get('risk_score')})")
+                    elif url_ml_analysis_result.get('risk_level') == 'high':
                         risk_score += 20 if not is_trusted_sender else 5
-                        risk_factors.append(f"URL ML: High risk URL detected: {url_text[:70]}... (Score: {url_analysis_result.get('risk_score')})")
-                    elif url_analysis_result.get('risk_level') == 'medium':
+                        risk_factors.append(f"URL ML: High risk URL detected: {url_text[:70]}... (Score: {url_ml_analysis_result.get('risk_score')})")
+                    elif url_ml_analysis_result.get('risk_level') == 'medium':
                         risk_score += 10 if not is_trusted_sender else 2
-                        risk_factors.append(f"URL ML: Medium risk URL detected: {url_text[:70]}... (Score: {url_analysis_result.get('risk_score')})")
+                        risk_factors.append(f"URL ML: Medium risk URL detected: {url_text[:70]}... (Score: {url_ml_analysis_result.get('risk_score')})")
         
-        # Adjust risk based on URL trust ratio
         if trusted_url_count > 0 and len(urls_in_email) > 0:
             trust_ratio = trusted_url_count / len(urls_in_email)
-            if trust_ratio >= 0.8:  # 80% or more trusted URLs
+            if trust_ratio >= 0.8:
                 risk_score -= 20
                 trust_factors.append(f"High ratio of trusted URLs: {trusted_url_count}/{len(urls_in_email)}")
-            elif trust_ratio < 0.3 and len(urls_in_email) > 2 : # Many URLs, few trusted
+            elif trust_ratio < 0.3 and len(urls_in_email) > 2 :
                 risk_score += 10
                 risk_factors.append(f"Low ratio of trusted URLs: {trusted_url_count}/{len(urls_in_email)}")
 
-    # 5. Determine Final Risk Level
-    final_risk_score = max(0, risk_score) # Ensure score is not negative
+    final_risk_score = max(0, risk_score)
     risk_level = 'safe'
     status_message = 'Analysis complete.'
 
-    # Adjust thresholds based on whether the sender is trusted
     if is_trusted_sender:
         if final_risk_score >= 70: risk_level, status_message = 'critical', 'Trusted sender, but very high risk factors detected in content/URLs.'
         elif final_risk_score >= 50: risk_level, status_message = 'high', 'Trusted sender, but significant suspicious elements found.'
@@ -352,8 +369,8 @@ def perform_email_analysis(email_data):
         elif final_risk_score >= 10: risk_level, status_message = 'low', 'Trusted sender, minor concerns, likely safe.'
         else:
             risk_level, status_message = 'safe', 'Trusted sender, appears safe.'
-            if not risk_factors: analysis_stats['false_positives_prevented'] += 1 # If truly no other risk factors
-    else: # Unknown or untrusted sender
+            if not risk_factors: analysis_stats['false_positives_prevented'] += 1
+    else:
         if final_risk_score >= 80: risk_level, status_message = 'critical', 'Critical phishing risk detected!'
         elif final_risk_score >= 50: risk_level, status_message = 'high', 'High phishing risk detected.'
         elif final_risk_score >= 25: risk_level, status_message = 'medium', 'Suspicious content or URLs found.'
@@ -378,11 +395,14 @@ def perform_email_analysis(email_data):
     }
 
 def perform_url_analysis(url_to_analyze):
-    """Perform phishing analysis on individual URL using bert-finetuned-phishing"""
+    """Perform phishing analysis on individual URL using bert-finetuned-phishing.
+       This function now PRIMARILY handles the ML model classification.
+       Playwright scan is called separately by the routes or perform_email_analysis.
+    """
     try:
         is_trusted, trusted_domain = is_trusted_domain(url_to_analyze)
         if is_trusted:
-            print(f"TRUSTED DOMAIN (URL Analysis): {url_to_analyze} -> {trusted_domain}")
+            print(f"TRUSTED DOMAIN (URL ML Analysis): {url_to_analyze} -> {trusted_domain}")
             analysis_stats['false_positives_prevented'] += 1
             return {
                 'status': f'URL from trusted domain: {trusted_domain}', 'risk_level': 'safe', 'risk_score': 0,
@@ -403,9 +423,7 @@ def perform_url_analysis(url_to_analyze):
         label = prediction_result['label']
         confidence = prediction_result['score']
         
-        # Labels for ealvaradob/bert-finetuned-phishing are usually 'PHISHING' or 'LEGITIMATE'
         is_phishing_pred = label.upper() == 'PHISHING'
-
         risk_level, status_msg, risk_score_val = 'unknown', 'Analysis error', 0
 
         if is_phishing_pred:
@@ -413,12 +431,12 @@ def perform_url_analysis(url_to_analyze):
             if confidence > 0.95: risk_level, status_msg, risk_score_val = 'critical', 'ML: Critical phishing URL (very high conf)', int(confidence * 100)
             elif confidence > 0.80: risk_level, status_msg, risk_score_val = 'high', 'ML: Likely phishing URL (high conf)', int(confidence * 100)
             elif confidence > 0.60: risk_level, status_msg, risk_score_val = 'medium', 'ML: Potentially suspicious URL (med conf)', int(confidence * 80)
-            else: risk_level, status_msg, risk_score_val = 'low', 'ML: Low confidence phishing prediction', int(confidence * 50) # Treat as low if conf is low
-        else: # Predicted Legitimate
+            else: risk_level, status_msg, risk_score_val = 'low', 'ML: Low confidence phishing prediction', int(confidence * 50)
+        else:
             analysis_stats['url_model_predictions']['safe'] += 1
-            if confidence > 0.9: risk_level, status_msg, risk_score_val = 'safe', 'ML: URL appears safe (high conf)', 0 # max(0, int((1 - confidence) * 30))
-            elif confidence > 0.7: risk_level, status_msg, risk_score_val = 'safe', 'ML: URL likely safe (med conf)', 0 #max(0, int((1 - confidence) * 50))
-            else: risk_level, status_msg, risk_score_val = 'low', 'ML: URL likely safe (low conf legitimate)', 5 #max(0, int((1 - confidence) * 70))
+            if confidence > 0.9: risk_level, status_msg, risk_score_val = 'safe', 'ML: URL appears safe (high conf)', 0
+            elif confidence > 0.7: risk_level, status_msg, risk_score_val = 'safe', 'ML: URL likely safe (med conf)', 0
+            else: risk_level, status_msg, risk_score_val = 'low', 'ML: URL likely safe (low conf legitimate)', 5
         
         return {
             'status': status_msg, 'risk_level': risk_level, 'risk_score': risk_score_val,
@@ -441,24 +459,24 @@ def perform_url_analysis(url_to_analyze):
 def fetch_playwright_scan_details(url_to_scan):
     """
     Calls the Dockerized Playwright service to perform a deep scan on the URL.
-    Returns the JSON response from the scanner service.
+    Returns the JSON response from the scanner service, with defaults for expected fields.
     """
     print(f"Calling Playwright scanner for deep analysis of URL: {url_to_scan}")
-    playwright_results = {"url_submitted_for_scan": url_to_scan} # Start with the URL
+    playwright_results = {"url_submitted_for_scan": url_to_scan} # Original key, good for reference
 
     try:
         scanner_payload = {"url": url_to_scan}
         response = requests.post(PLAYWRIGHT_SCANNER_URL, json=scanner_payload, timeout=PLAYWRIGHT_SCANNER_TIMEOUT_SECONDS)
-        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
+        response.raise_for_status()
         
-        # Attempt to parse JSON, but include raw text if it fails for debugging
         try:
-            playwright_results.update(response.json()) # Merge scanner's JSON into our results
-            print(f"Playwright scan successful for {url_to_scan}. Final URL: {playwright_results.get('final_url')}")
+            # Update playwright_results with the actual response from the scanner
+            playwright_results.update(response.json()) 
+            print(f"Playwright scan successful for {url_to_scan}. Final URL: {playwright_results.get('final_url', 'N/A')}")
         except json.JSONDecodeError:
             print(f"Could not decode JSON response from Playwright scanner for {url_to_scan}. Raw response: {response.text[:500]}")
             playwright_results["error"] = "Invalid JSON response from Playwright scanner"
-            playwright_results["raw_response_snippet"] = response.text[:500] # Store snippet
+            playwright_results["raw_response_snippet"] = response.text[:500]
 
     except requests.exceptions.Timeout:
         print(f"Timeout calling Playwright scanner for {url_to_scan}")
@@ -476,7 +494,48 @@ def fetch_playwright_scan_details(url_to_scan):
     except requests.exceptions.RequestException as req_err:
         print(f"Error calling Playwright scanner for {url_to_scan}: {req_err}")
         playwright_results["error"] = f"Playwright scanner request failed: {str(req_err)}"
-    print(playwright_results)
+    
+    # --- Ensure standard fields and new detailed fields exist with defaults ---
+    # Basic fields already present in your original code:
+    playwright_results.setdefault('final_url', 'N/A')
+    playwright_results.setdefault('page_title', 'N/A')
+    playwright_results.setdefault('status_code', 'N/A') # Can be string or int, frontend handles N/A
+    playwright_results.setdefault('alerts_found', [])
+    playwright_results.setdefault('redirection_history', [])
+
+    # New fields based on your Playwright service output:
+    playwright_results.setdefault('original_url', playwright_results.get('url_submitted_for_scan', url_to_scan)) # Ensure original_url is present
+    playwright_results.setdefault('screenshot_base64', None) # Frontend expects this, None or "" is fine
+    playwright_results.setdefault('has_iframes', None) # Booleans, None if not determined, frontend treats None/false similarly
+    playwright_results.setdefault('has_input_fields', None)
+    playwright_results.setdefault('has_password_field', None)
+    playwright_results.setdefault('number_of_external_links', None) # Numbers, None if not determined
+    playwright_results.setdefault('number_of_forms', None)
+    playwright_results.setdefault('number_of_links', None)
+    playwright_results.setdefault('number_of_redirects', None)
+    playwright_results.setdefault('number_of_script_tags', None)
+    playwright_results.setdefault('page_content_length', None)
+    playwright_results.setdefault('suspicious_words_found', []) # List
+    playwright_results.setdefault('url_contains_ip', None) # Boolean
+    playwright_results.setdefault('url_length', None) # Number
+    playwright_results.setdefault('url_path_entropy', None) # Float or None
+    playwright_results.setdefault('url_query_entropy', None) # Float or None
+    
+    # Domain Info (nested object)
+    domain_info_data = playwright_results.get('domain_info', {}) # Get existing or new dict
+    domain_info_data.setdefault('domain_age_days', None)
+    domain_info_data.setdefault('hostname_matches_ssl_cert', None) # Boolean or None
+    domain_info_data.setdefault('ssl_certificate_expiry_days', None)
+    domain_info_data.setdefault('ssl_issuer', 'N/A')
+    domain_info_data.setdefault('ssl_protocol', 'N/A')
+    domain_info_data.setdefault('ssl_subject_name', 'N/A')
+    domain_info_data.setdefault('ssl_valid', None) # Boolean or None
+    playwright_results['domain_info'] = domain_info_data # Ensure the updated/defaulted dict is set back
+
+    # The 'error' key is already handled by the try-except blocks above.
+    # 'details' for HTTP errors is also handled.
+    
+    print(f"Playwright results (with defaults) for {url_to_scan}: {json.dumps(playwright_results, indent=2, default=str)}") # Use default=str for things like datetime if they ever creep in
     return playwright_results
 
 if __name__ == '__main__':
@@ -488,8 +547,9 @@ if __name__ == '__main__':
     print(f"Loaded {len(TRUSTED_DOMAINS)} trusted domains and {len(TRUSTED_EMAIL_PATTERNS)} trusted email patterns.")
     print(f"URL Classification Model Ready: {url_classification_pipeline is not None}")
     print(f"Email Content Model Ready: {email_content_pipeline is not None}")
-    print("Backend will be available at: http://localhost:5123")
+    print(f"Playwright Scanner URL: {PLAYWRIGHT_SCANNER_URL}")
+    print("Backend will be available at: http://localhost:5102")
     print("Endpoints: GET /health, POST /analyze-email, POST /analyze-url, GET /stats")
     print("\nReady to receive requests from Chrome extension...")
     
-    app.run(host='localhost', port=5123, debug=True, threaded=True)
+    app.run(host='localhost', port=5102, debug=True, threaded=True) # Use threaded=True for multiple requests

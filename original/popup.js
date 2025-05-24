@@ -17,7 +17,7 @@ class PopupController {
 async loadBackendStats() {
   try {
     // First try to get fresh stats from backend
-    const response = await fetch('http://localhost:5123/stats', {
+    const response = await fetch('http://localhost:5102/stats', {
       method: 'GET',
       timeout: 3000
     });
@@ -248,7 +248,7 @@ setupAutoRefresh() {
   // Check connection status to backend
   async checkConnectionStatus() {
   try {
-    const response = await fetch('http://localhost:5123/health', {
+    const response = await fetch('http://localhost:5102/health', {
       method: 'GET',
       timeout: 5000
     });
