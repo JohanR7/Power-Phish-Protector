@@ -1,6 +1,6 @@
 # Phishing Detection Chrome Extension
 
-A Chrome extension that analyzes email content and URLs for phishing indicators. The extension works with Gmail and Outlook, extracting email content and analyzing URLs when users hover over or right-click on links.
+A Chrome extension that analyzes email content and URLs for phishing indicators. The extension works with Gmail , extracting email content and analyzing URLs when users hover over on links.
 
 ## Features
 
