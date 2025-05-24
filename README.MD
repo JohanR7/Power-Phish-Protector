@@ -14,15 +14,25 @@ A Chrome extension that analyzes email content and URLs for phishing indicators.
 ## Project Structure
 
 ```
-phishing-detection-extension/
-├── manifest.json          # Chrome extension manifest
-├── background.js          # Service worker handling extension logic
-├── content.js            # Content script for email platforms
-├── popup.html           # Extension popup interface
-├── popup.js             # Popup functionality
-├── app.py               # Flask backend server
-├── requirements.txt     # Python dependencies
-└── README.md           # This file
+Power-Phish-Protector/
+├── Backend/                  # Flask backend application
+│   └── app.py
+│
+├── ChromeExtension/          # Chrome extension frontend
+│   ├── background.js
+│   ├── content.js
+│   ├── manifest.json
+│   ├── popup.html
+│   └── popup.js
+│
+├── Docker/                   # Docker setup for backend
+│   ├── app.py
+│   ├── Dockerfile
+│   └── requirements.txt
+│
+├── .gitignore
+├── README.md
+
 ```
 
 ## Setup Instructions
