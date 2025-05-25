@@ -8,6 +8,8 @@ A Chrome extension that analyzes email content and URLs for phishing indicators.
 
 - **URL Analysis**: Analyzes URLs when users hover over or right-click on links to detect suspicious behavior.
 
+- **Phishing Classification with BERT Deep Learning Models**: Leverages fine-tuned BERT-based deep learning models to classify the extracted email content and URLs as phishing or benign, enhancing detection accuracy through contextual understanding of text.
+
 - **Real-time Processing**: Sends data to a Flask-based backend server for instant phishing analysis.
 
 - **Dockerized Sandbox Environment**: Runs backend services in an isolated Docker container to ensure secure and reproducible operations.
