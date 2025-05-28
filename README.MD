@@ -153,6 +153,11 @@ Power-Phish-Protector/
 - **Whitelist/Blacklist**: User-defined trusted/blocked domains
 - **Real-time Notifications**: Push notifications for high-risk detections
 
+## Contributors
+
+@amanback
+
+
 ## License
 
 This project is for educational and research purposes. Ensure compliance with email platform terms of service when using.
